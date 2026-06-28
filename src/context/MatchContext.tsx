@@ -935,9 +935,10 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return data.ads;
           });
         }
-        // Fetch assets only when assetsVersion incremented on the server
-        if (data.assetsVersion !== undefined && data.assetsVersion !== assetsVersionRef.current) {
-          assetsVersionRef.current = data.assetsVersion;
+        // Fetch assets on first load OR when assetsVersion increments on the server
+        const isFirstPoll = assetsVersionRef.current === -999;
+        if (isFirstPoll || (data.assetsVersion !== undefined && data.assetsVersion !== assetsVersionRef.current)) {
+          assetsVersionRef.current = data.assetsVersion ?? assetsVersionRef.current;
           
           const assetsRes = await fetch('/api/sync/assets');
           if (assetsRes.ok) {
