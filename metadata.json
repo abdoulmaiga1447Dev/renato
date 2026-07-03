@@ -1,0 +1,6 @@
+{
+  "name": "Live Football Broadcast Overlay",
+  "description": "Overlay de diffusion sportive en direct haut de gamme inspiré des interfaces TV professionnelles pour les matchs de football en direct.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
