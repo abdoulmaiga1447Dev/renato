@@ -475,6 +475,16 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     localStorage.setItem('broadcastAds', JSON.stringify(ads));
+
+    const isOverlay = typeof window !== 'undefined' &&
+      (window.location.search.includes('overlay') || window.location.hash.includes('overlay'));
+    if (!isOverlay) {
+      fetch('/api/sync/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ads })
+      }).catch(err => console.error("Failed to sync ads:", err));
+    }
   }, [ads]);
 
   const [selectedLineupTeam, setSelectedLineupTeam] = useState<'home' | 'away'>(() => {
@@ -1098,6 +1108,9 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               }
               if (assetsData.streamerLogo !== undefined) {
                 setStreamerLogoState(prev => prev === assetsData.streamerLogo ? prev : assetsData.streamerLogo);
+              }
+              if (assetsData.ads !== undefined && Array.isArray(assetsData.ads)) {
+                setAds(prev => JSON.stringify(prev) === JSON.stringify(assetsData.ads) ? prev : assetsData.ads);
               }
             }
           }

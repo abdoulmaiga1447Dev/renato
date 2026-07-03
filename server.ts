@@ -357,6 +357,7 @@ let sharedAssets = {
   backgroundImage: null as string | null,
   competitionImage: null as string | null,
   streamerLogo: null as string | null,
+  ads: null as any[] | null,
   version: 0
 };
 
