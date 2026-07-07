@@ -139,24 +139,24 @@ function BroadcastGrid() {
             </div>
 
             {/* ZONE CENTRALE (Row 2) */}
-            <div className="h-full min-h-0 overflow-hidden" id="stats-panel-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="stats-panel-cell">
               <StatsPanel />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="live-camera-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="live-camera-cell">
               <LiveCamera />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="lineup-board-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="lineup-board-cell">
               <LineupBoard />
             </div>
 
             {/* ZONE BASSE (Row 3) */}
-            <div className="h-full min-h-0 overflow-hidden" id="upcoming-matches-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="upcoming-matches-cell">
               <UpcomingMatches />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="ad-banner-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="ad-banner-cell">
               <AdBanner />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="competition-logo-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="competition-logo-cell">
               <CompetitionLogo />
             </div>
 
@@ -300,24 +300,24 @@ function BroadcastGrid() {
             </div>
 
             {/* ZONE CENTRALE (Row 2) */}
-            <div className="h-full min-h-0 overflow-hidden" id="stats-panel-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="stats-panel-cell">
               <StatsPanel />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="live-camera-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="live-camera-cell">
               <LiveCamera />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="lineup-board-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="lineup-board-cell">
               <LineupBoard />
             </div>
 
             {/* ZONE BASSE (Row 3) */}
-            <div className="h-full min-h-0 overflow-hidden" id="upcoming-matches-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="upcoming-matches-cell">
               <UpcomingMatches />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="ad-banner-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="ad-banner-cell">
               <AdBanner />
             </div>
-            <div className="h-full min-h-0 overflow-hidden" id="competition-logo-cell">
+            <div className="h-full min-h-0 min-w-0 overflow-hidden" id="competition-logo-cell">
               <CompetitionLogo />
             </div>
 

@@ -64,9 +64,13 @@ export default function LineupBoard() {
   }, []);
 
   const hasImage = hasLineup && !!lineup?.imageUrl;
+  // Compact/edge-to-edge styling now applies whenever real data is shown (API players or an image),
+  // not only when an uploaded image is present.
+  const compact = hasLineup;
 
   return (
-    <div ref={containerRef} className="backdrop-blur-md bg-black/45 border border-white/10 rounded-2xl p-2.5 sm:p-3 shadow-lg relative flex flex-col h-full overflow-hidden" id="lineup-board-widget">
+    <div ref={containerRef} className={`esports-panel flex flex-col h-full ${compact ? 'p-0' : 'p-2.5 sm:p-3'}`} id="lineup-board-widget">
+      <div className="esports-panel-glow" style={{ zIndex: 25 }} />
 
       {/* Full-bleed composition image: fills the ENTIRE widget card, edge to edge, behind all other content */}
       {hasImage && (
@@ -95,12 +99,13 @@ export default function LineupBoard() {
 
       {/* Header controls for toggle teams */}
       <div className={`flex items-center justify-between shrink-0 relative z-20 ${
-        hasImage
-          ? '-mx-2.5 sm:-mx-3 -mt-2.5 sm:-mt-3 px-2.5 sm:px-3 pt-2.5 sm:pt-3 pb-3 mb-2 bg-gradient-to-b from-black/85 via-black/50 to-transparent'
-          : 'border-b border-white/10 pb-2 mb-2'
+        compact
+          ? 'px-2.5 sm:px-3 pt-2.5 sm:pt-3 pb-3 mb-2 bg-gradient-to-b from-black/85 via-black/50 to-transparent'
+          : 'esports-ribbon -mx-2.5 sm:-mx-3 -mt-2.5 sm:-mt-3 px-2.5 sm:px-3 py-2 mb-2 rounded-t-lg'
       }`} id="lineup-title-bar">
-        {!hasImage && (
+        {!compact && (
           <div className="flex items-center gap-1.5">
+            <span className="esports-ribbon-stripes"><span /><span /><span /></span>
             {/* Numbers emblem icon */}
             <div className="bg-brand-green/20 text-brand-green text-[10px] sm:text-xs font-mono font-black w-5 h-5 rounded flex items-center justify-center shrink-0">
               22
@@ -117,12 +122,12 @@ export default function LineupBoard() {
         )}
 
         {/* Small selector pills exactly as drawn with shields of Portugal/Congo */}
-        <div className={`flex items-center bg-black/40 rounded-lg border border-white/10 ml-auto ${hasImage ? 'gap-0.5 p-0.5' : 'gap-1 p-1 rounded-xl'}`} id="lineup-teams-toggler shadow-inner">
+        <div className={`flex items-center bg-black/40 rounded-lg border border-white/10 ml-auto ${compact ? 'gap-0.5 p-0.5' : 'gap-1 p-1 rounded-xl'}`} id="lineup-teams-toggler shadow-inner">
           <button
             onClick={() => setLineupTeam('home')}
             style={isHomeSelected ? { backgroundColor: homeTeam.color, color: homeTeam.textColor || '#FFFFFF' } : {}}
             className={`rounded-md font-bold duration-155 uppercase flex items-center cursor-pointer ${
-              hasImage ? 'text-[7px] p-1 px-1.5 gap-0.5' : 'text-[10px] p-1.5 px-3 rounded-lg gap-1.5'
+              compact ? 'text-[7px] p-1 px-1.5 gap-0.5' : 'text-[10px] p-1.5 px-3 rounded-lg gap-1.5'
             } ${
               isHomeSelected 
                 ? 'shadow-md scale-102' 
@@ -130,15 +135,15 @@ export default function LineupBoard() {
             }`}
             title={`Afficher ${homeTeam.name}`}
           >
-            <span className={hasImage ? 'text-[9px]' : 'text-[12px]'}>{homeTeam.logoUrl && (homeTeam.logoUrl.startsWith('http') || homeTeam.logoUrl.startsWith('data:')) ? <img src={homeTeam.logoUrl} className={hasImage ? 'w-2.5 h-2.5 object-contain inline' : 'w-4 h-4 object-contain inline'} /> : homeTeam.logoUrl}</span>
-            <span className={`font-mono tracking-wider font-black ${hasImage ? 'text-[8px]' : 'text-[11px]'}`}>{homeTeam.code}</span>
+            <span className={compact ? 'text-[9px]' : 'text-[12px]'}>{homeTeam.logoUrl && (homeTeam.logoUrl.startsWith('http') || homeTeam.logoUrl.startsWith('data:')) ? <img src={homeTeam.logoUrl} className={compact ? 'w-2.5 h-2.5 object-contain inline' : 'w-4 h-4 object-contain inline'} /> : homeTeam.logoUrl}</span>
+            <span className={`font-mono tracking-wider font-black ${compact ? 'text-[8px]' : 'text-[11px]'}`}>{homeTeam.code}</span>
           </button>
           
           <button
             onClick={() => setLineupTeam('away')}
             style={!isHomeSelected ? { backgroundColor: awayTeam.color, color: awayTeam.textColor || '#FFFFFF' } : {}}
             className={`rounded-md font-bold duration-155 uppercase flex items-center cursor-pointer ${
-              hasImage ? 'text-[7px] p-1 px-1.5 gap-0.5' : 'text-[10px] p-1.5 px-3 rounded-lg gap-1.5'
+              compact ? 'text-[7px] p-1 px-1.5 gap-0.5' : 'text-[10px] p-1.5 px-3 rounded-lg gap-1.5'
             } ${
               !isHomeSelected 
                 ? 'shadow-md scale-102' 
@@ -146,15 +151,15 @@ export default function LineupBoard() {
             }`}
             title={`Afficher ${awayTeam.name}`}
           >
-            <span className={hasImage ? 'text-[9px]' : 'text-[12px]'}>{awayTeam.logoUrl && (awayTeam.logoUrl.startsWith('http') || awayTeam.logoUrl.startsWith('data:')) ? <img src={awayTeam.logoUrl} className={hasImage ? 'w-2.5 h-2.5 object-contain inline' : 'w-4 h-4 object-contain inline'} /> : awayTeam.logoUrl}</span>
-            <span className={`font-mono tracking-wider font-black ${hasImage ? 'text-[8px]' : 'text-[11px]'}`}>{awayTeam.code}</span>
+            <span className={compact ? 'text-[9px]' : 'text-[12px]'}>{awayTeam.logoUrl && (awayTeam.logoUrl.startsWith('http') || awayTeam.logoUrl.startsWith('data:')) ? <img src={awayTeam.logoUrl} className={compact ? 'w-2.5 h-2.5 object-contain inline' : 'w-4 h-4 object-contain inline'} /> : awayTeam.logoUrl}</span>
+            <span className={`font-mono tracking-wider font-black ${compact ? 'text-[8px]' : 'text-[11px]'}`}>{awayTeam.code}</span>
           </button>
         </div>
       </div>
 
       {/* COMPACTED VERTICAL FOOTBALL TACTICAL BOARD REPRESENTATION */}
       <div className={`flex-1 relative shadow-inner overflow-hidden flex flex-col justify-between z-10 ${
-        hasImage ? '' : 'bg-black/40 hover:bg-black/35 rounded-2xl border border-white/10'
+        compact ? '' : 'bg-black/40 hover:bg-black/35 rounded-2xl border border-white/10'
       }`} id="lineup-pitch-stage">
         
         {!hasLineup ? (

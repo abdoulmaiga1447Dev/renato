@@ -338,24 +338,18 @@ export default function Header() {
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                   <span className="text-slate-400 font-bold uppercase">À VENIR</span>
                 </>
+              ) : (status === '1H' && minute >= 45) || (status === '2H' && minute >= 90) ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                  <span className="text-amber-400 font-mono font-black tracking-widest text-[10px] sm:text-xs uppercase" style={{ textShadow: '0 0 8px rgba(245, 158, 11, 0.7)' }}>
+                    TEMPS ADDITIONNEL
+                  </span>
+                </>
               ) : (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-red animate-ping" />
                   <span className="text-brand-green font-mono font-black tracking-widest text-[10px] sm:text-xs flex items-center">
                     {formatTime(minute, seconds)}
-                    {status === '2H' ? (
-                      match.extraTime2H && (
-                        <span className="text-amber-400 font-extrabold ml-1.5 animate-pulse" style={{ textShadow: '0 0 8px rgba(245, 158, 11, 0.7)' }}>
-                          {String(match.extraTime2H).startsWith('+') ? match.extraTime2H : `+${match.extraTime2H}`}
-                        </span>
-                      )
-                    ) : (
-                      match.extraTime1H && (
-                        <span className="text-amber-400 font-extrabold ml-1.5 animate-pulse" style={{ textShadow: '0 0 8px rgba(245, 158, 11, 0.7)' }}>
-                          {String(match.extraTime1H).startsWith('+') ? match.extraTime1H : `+${match.extraTime1H}`}
-                        </span>
-                      )
-                    )}
                   </span>
                 </>
               )}

@@ -16,7 +16,11 @@ export default defineConfig(() => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // IMPORTANT: ignore server-side JSON data files (admin_data.json, assets_data.json) —
+      // these are rewritten frequently by the backend and must NEVER trigger a client reload.
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        ignored: ['**/admin_data.json', '**/assets_data.json']
+      },
       proxy: {
         '/api': {
           target: 'http://localhost:3000',

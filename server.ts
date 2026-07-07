@@ -15,75 +15,10 @@ import fs from 'fs';
 // Load environment variables from standard .env file
 dotenv.config();
 
-// Precedence loader: prioritize any FOOTBALL_API_KEY specified in local files .env or .env.example
-// so that user edits in the direct browser file explorer are honored immediately.
-// BUT do not overwrite a valid, existing process.env.FOOTBALL_API_KEY unless a stronger local key in .env exists.
-function loadLocalFootballApiKey() {
-  const envPath = path.join(process.cwd(), '.env');
-  const envExamplePath = path.join(process.cwd(), '.env.example');
-  
-  // Clean process.env.FOOTBALL_API_KEY first if present
-  if (process.env.FOOTBALL_API_KEY) {
-    process.env.FOOTBALL_API_KEY = process.env.FOOTBALL_API_KEY.trim().replace(/^["']|["']$/g, '');
-  }
-
-  const existingEnvKey = process.env.FOOTBALL_API_KEY;
-  const isExistingPlaceholder = !existingEnvKey || 
-    existingEnvKey === 'YOUR_FOOTBALL_API_KEY' || 
-    existingEnvKey === 'MY_FOOTBALL_API_KEY';
-
-  let keyFromFile: string | null = null;
-  let loadedFrom = '';
-
-  if (fs.existsSync(envPath)) {
-    try {
-      const content = fs.readFileSync(envPath, 'utf8');
-      const match = content.match(/^FOOTBALL_API_KEY\s*=\s*(.*)$/m);
-      if (match && match[1]) {
-        keyFromFile = match[1].trim();
-        loadedFrom = '.env';
-      }
-    } catch (e) {
-      console.error("Error reading .env:", e);
-    }
-  }
-
-  // Only read from env.example as a worst-case scenario if no .env can be read AND there is no existing env key
-  if (!keyFromFile && isExistingPlaceholder && fs.existsSync(envExamplePath)) {
-    try {
-      const content = fs.readFileSync(envExamplePath, 'utf8');
-      const match = content.match(/^FOOTBALL_API_KEY\s*=\s*(.*)$/m);
-      if (match && match[1]) {
-        const val = match[1].trim();
-        // Do not load suspended test key as a primary key override if we can avoid it
-        if (val && val !== 'YOUR_FOOTBALL_API_KEY' && val !== 'MY_FOOTBALL_API_KEY') {
-          keyFromFile = val;
-          loadedFrom = '.env.example';
-        }
-      }
-    } catch (e) {
-      console.error("Error reading .env.example:", e);
-    }
-  }
-
-  if (keyFromFile) {
-    keyFromFile = keyFromFile.replace(/^["']|["']$/g, '').trim();
-    const isFilePlaceholder = keyFromFile === 'YOUR_FOOTBALL_API_KEY' || keyFromFile === 'MY_FOOTBALL_API_KEY';
-    
-    if (keyFromFile && !isFilePlaceholder) {
-      // If we have an existing functional env key and we are trying to load from .env.example, keep the process.env!
-      if (!isExistingPlaceholder && loadedFrom === '.env.example') {
-        console.log(`[Env Loader] Retaining existing injected FOOTBALL_API_KEY (${existingEnvKey?.slice(0, 4)}...) over ${loadedFrom} placeholder.`);
-        return;
-      }
-      
-      console.log(`[Env Loader] Prioritizing FOOTBALL_API_KEY from ${loadedFrom} file: ${keyFromFile.slice(0, 4)}...${keyFromFile.slice(-4)}`);
-      process.env.FOOTBALL_API_KEY = keyFromFile;
-    }
-  }
+// Clean up FOOTBALL_API_KEY formatting (trim whitespace/quotes) if present
+if (process.env.FOOTBALL_API_KEY) {
+  process.env.FOOTBALL_API_KEY = process.env.FOOTBALL_API_KEY.trim().replace(/^["']|["']$/g, '');
 }
-
-loadLocalFootballApiKey();
 
 
 
@@ -109,10 +44,47 @@ async function fetchWithTimeout(url: string, options: any = {}, timeoutMs = 1000
   }
 }
 
-// Reusable function to fetch directly from API-Football (api-sports.io or RapidAPI fallback)
-// COMPLETELY DISABLED FOR CURRENT PHASE - LOCAL MODE ONLY
+// Reusable function to fetch directly from API-Football (api-sports.io direct, or via RapidAPI)
 async function fetchFromApiFootball(endpoint: string, queryParams: Record<string, string | number> = {}) {
-  throw new Error("L'API-Football externe est désactivée par configuration.");
+  const apiKey = process.env.FOOTBALL_API_KEY;
+  const isPlaceholder = !apiKey || apiKey === 'YOUR_FOOTBALL_API_KEY' || apiKey === 'MY_FOOTBALL_API_KEY';
+  if (isPlaceholder) {
+    throw new Error("FOOTBALL_API_KEY manquante ou non configurée. Ajoutez une vraie clé dans le fichier .env (pas .env.example).");
+  }
+
+  const provider = (process.env.FOOTBALL_API_PROVIDER || 'apifootball').toLowerCase();
+  const query = new URLSearchParams(
+    Object.entries(queryParams).reduce((acc, [k, v]) => {
+      acc[k] = String(v);
+      return acc;
+    }, {} as Record<string, string>)
+  ).toString();
+
+  let url: string;
+  let headers: Record<string, string>;
+
+  if (provider === 'rapidapi') {
+    url = `https://api-football-v1.p.rapidapi.com/v3/${endpoint}${query ? `?${query}` : ''}`;
+    headers = {
+      'x-rapidapi-key': apiKey,
+      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com'
+    };
+  } else {
+    url = `https://v3.football.api-sports.io/${endpoint}${query ? `?${query}` : ''}`;
+    headers = {
+      'x-apisports-key': apiKey
+    };
+  }
+
+  const response = await fetchWithTimeout(url, { headers }, 10000);
+  if (!response.ok) {
+    throw new Error(`API-Football a répondu avec le statut ${response.status}`);
+  }
+  const data = await response.json();
+  if (data.errors && Array.isArray(data.errors) ? data.errors.length > 0 : (data.errors && Object.keys(data.errors).length > 0)) {
+    throw new Error(`Erreur API-Football: ${JSON.stringify(data.errors)}`);
+  }
+  return data;
 }
 
 // Helper to get beautiful custom colors based on team name
@@ -473,7 +445,12 @@ function loadAdminData() {
   if (fs.existsSync(ADMIN_DATA_FILE)) {
     try {
       const parsed = JSON.parse(fs.readFileSync(ADMIN_DATA_FILE, 'utf8'));
-      if (parsed.lineups) adminLineups = parsed.lineups;
+      if (parsed.lineups) {
+        // Permanently purge any legacy uploaded composition images — API data is now the only source.
+        if (parsed.lineups.home && parsed.lineups.home.imageUrl) delete parsed.lineups.home.imageUrl;
+        if (parsed.lineups.away && parsed.lineups.away.imageUrl) delete parsed.lineups.away.imageUrl;
+        adminLineups = parsed.lineups;
+      }
       if (parsed.upcomingMatches) adminUpcomingMatches = parsed.upcomingMatches;
       if (parsed.matchInfo) adminMatchInfo = parsed.matchInfo;
       console.log("[Admin Server] Loaded persisted admin data successfully.");
@@ -564,17 +541,8 @@ async function startServer() {
         nextMin += 1;
       }
 
-      if (nextStatus === '1H' && nextMin >= 45) {
-        nextIsPlaying = false;
-        nextStatus = 'HT';
-        nextMin = 45;
-        nextSec = 0;
-      } else if (nextStatus === '2H' && nextMin >= 90) {
-        nextIsPlaying = false;
-        nextStatus = 'FINISHED';
-        nextMin = 90;
-        nextSec = 0;
-      }
+      // No more auto-transition to HT/FINISHED at 45/90 — the clock keeps running into
+      // stoppage time ("temps additionnel") until the admin manually ends the period.
 
       adminMatchInfo.seconds = nextSec;
       adminMatchInfo.minute = nextMin;
@@ -902,23 +870,48 @@ async function startServer() {
     });
   });
 
-  // Endpoint to obtain real team statistics from API-Football
+  // Endpoint to obtain real team statistics from API-Football (RE-ENABLED: stats only, per user request)
   app.get('/api/football/statistics', async (req, res) => {
-    return res.json({
-      success: false,
-      response: [],
-      error: "API Football désactivée"
-    });
+    try {
+      const fixtureId = req.query.fixture;
+      if (!fixtureId) {
+        return res.status(400).json({ success: false, response: [], error: "Paramètre 'fixture' (ID du match API-Football) manquant." });
+      }
+      const data = await fetchFromApiFootball('fixtures/statistics', { fixture: String(fixtureId) });
+      return res.json({
+        success: true,
+        response: data.response || []
+      });
+    } catch (err: any) {
+      return res.json({
+        success: false,
+        response: [],
+        error: err.message
+      });
+    }
   });
 
-  // Endpoint to obtain real team lineups from API-Football
+  // Endpoint to obtain real team lineups from API-Football (RE-ENABLED per user request)
   app.get('/api/football/lineups', async (req, res) => {
-    return res.json({
-      success: false,
-      home: { formation: "Non disponible", players: [] },
-      away: { formation: "Non disponible", players: [] },
-      message: "API Football désactivée"
-    });
+    try {
+      const fixtureId = req.query.fixture;
+      if (!fixtureId) {
+        return res.json({ success: false, home: { formation: "Non disponible", players: [] }, away: { formation: "Non disponible", players: [] }, message: "Paramètre 'fixture' manquant." });
+      }
+      const data = await fetchFromApiFootball('fixtures/lineups', { fixture: String(fixtureId) });
+      const response = data.response || [];
+      return res.json({
+        success: true,
+        response
+      });
+    } catch (err: any) {
+      return res.json({
+        success: false,
+        home: { formation: "Non disponible", players: [] },
+        away: { formation: "Non disponible", players: [] },
+        message: err.message
+      });
+    }
   });
 
   // Endpoint to obtain real team events, statistics, lineups, and current match state in one call

@@ -88,7 +88,7 @@ export interface MatchState {
   minute: number;
   seconds: number;
   isPlaying: boolean;
-  status: 'IN_PLAY' | 'FINISHED' | 'HALF_TIME' | 'UPCOMING';
+  status: 'IN_PLAY' | 'FINISHED' | 'HALF_TIME' | 'UPCOMING' | '1H' | '2H' | 'HT' | 'FT';
   date?: string;
   competition: string;
   hasRealStats?: boolean;

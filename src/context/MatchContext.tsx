@@ -333,6 +333,7 @@ export function generateLineupForTeam(teamName: string, color: string, isHome: b
 
 interface MatchContextType {
   state: MatchState;
+  setMatchState: React.Dispatch<React.SetStateAction<MatchState>>;
   upcomingMatches: UpcomingMatch[];
   ads: Ad[];
   setAds: React.Dispatch<React.SetStateAction<Ad[]>>;
@@ -708,7 +709,13 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [customLineups, setCustomLineupsState] = useState<Record<'home' | 'away', Lineup>>(() => {
     try {
       const saved = localStorage.getItem('customLineups');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Permanently purge any legacy uploaded composition images — API data is now the only source.
+        if (parsed?.home?.imageUrl) delete parsed.home.imageUrl;
+        if (parsed?.away?.imageUrl) delete parsed.away.imageUrl;
+        return parsed;
+      }
     } catch (e) {}
     return portlandCopy(lineupsData);
   });
@@ -897,7 +904,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    const payload = {
+    const payload: any = {
       selectedApiMatchId,
       streamSource,
       selectedLineupTeam,
@@ -907,10 +914,14 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       pinnedMatchIds,
       matchState,
       phoneCamStreamId,
-      customLineups,
       customUpcomingMatches,
       timestamp: localTimestampRef.current
     };
+    // Only push customLineups when NOT driven by the API — otherwise a stale tab could
+    // re-contaminate the shared state with old manually-entered lineup data.
+    if (!selectedApiMatchId) {
+      payload.customLineups = customLineups;
+    }
 
     const timer = setTimeout(() => {
       // Re-verify guard inside the timeout to ensure no stale server state is pushed back
@@ -997,7 +1008,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (data.isPlayingSim !== undefined) setIsPlayingSim(data.isPlayingSim);
       if (data.phoneCamStreamId !== undefined) setPhoneCamStreamId(data.phoneCamStreamId);
       if (data.pinnedMatchIds !== undefined) setPinnedMatchIds(data.pinnedMatchIds);
-      if (data.customLineups) setCustomLineupsState(data.customLineups);
+      if (data.customLineups && !(data.selectedApiMatchId || selectedApiMatchId)) setCustomLineupsState(data.customLineups);
       if (data.customUpcomingMatches) setCustomUpcomingMatchesState(data.customUpcomingMatches);
       if (data.matchState) {
         setMatchState(prev => ({ ...prev, ...data.matchState }));
@@ -1082,7 +1093,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (data.pinnedMatchIds !== undefined) {
           setPinnedMatchIds(prev => JSON.stringify(prev) === JSON.stringify(data.pinnedMatchIds) ? prev : data.pinnedMatchIds);
         }
-        if (data.customLineups) {
+        if (data.customLineups && !(data.selectedApiMatchId || selectedApiMatchId)) {
           setCustomLineupsState(prev => JSON.stringify(prev) === JSON.stringify(data.customLineups) ? prev : data.customLineups);
         }
         if (data.customUpcomingMatches) {
@@ -1146,7 +1157,10 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       
       if (data.matches) {
-        setApiMatches(data.matches);
+        setApiMatches(prev => {
+          const same = JSON.stringify(prev) === JSON.stringify(data.matches);
+          return same ? prev : data.matches;
+        });
       } else if (!data.error && !data.message) {
         throw new Error("L'API n'a pas retourné de liste de matchs valide.");
       }
@@ -1190,21 +1204,34 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (selectedFromList) {
         const selected = (fetchedDetails && String(fetchedDetails.id) === String(selectedApiMatchId)) ? fetchedDetails : selectedFromList;
         setMatchState(prev => {
+          const nextRelevant = {
+            hasRealStats: selected.hasRealStats ?? false,
+            homeApiTeamId: selected.homeTeam.apiTeamId,
+            awayApiTeamId: selected.awayTeam.apiTeamId,
+            stats: { ...prev.stats, ...selected.stats }
+          };
+          const prevRelevant = {
+            hasRealStats: (prev as any).hasRealStats ?? false,
+            homeApiTeamId: prev.homeTeam.apiTeamId,
+            awayApiTeamId: prev.awayTeam.apiTeamId,
+            stats: prev.stats
+          };
+          // Skip the update entirely if nothing actually changed (prevents unnecessary re-renders / render loops)
+          if (JSON.stringify(prevRelevant) === JSON.stringify(nextRelevant)) {
+            return prev;
+          }
           return {
             ...prev,
-            hasRealStats: selected.hasRealStats ?? false,
+            hasRealStats: nextRelevant.hasRealStats,
             homeTeam: {
               ...prev.homeTeam,
-              apiTeamId: selected.homeTeam.apiTeamId
+              apiTeamId: nextRelevant.homeApiTeamId
             },
             awayTeam: {
               ...prev.awayTeam,
-              apiTeamId: selected.awayTeam.apiTeamId
+              apiTeamId: nextRelevant.awayApiTeamId
             },
-            stats: {
-              ...prev.stats,
-              ...selected.stats
-            }
+            stats: nextRelevant.stats
           };
         });
       }
@@ -1242,6 +1269,10 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setFetchedStats(null);
       setFetchedLineups(null);
       setFetchedDetails(null);
+      setCustomLineupsState(prev => ({
+        home: { formation: 'Non disponible', players: [] },
+        away: { formation: 'Non disponible', players: [] }
+      }));
       return;
     }
 
@@ -1255,6 +1286,10 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setFetchedStats(null);
       setFetchedLineups(null);
       setFetchedDetails(null);
+      setCustomLineupsState(prev => ({
+        home: { formation: 'Non disponible', players: [] },
+        away: { formation: 'Non disponible', players: [] }
+      }));
 
       try {
         const detailsRes = await fetchMatchDetails(selectedApiMatchId);
@@ -1268,12 +1303,33 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const statsRes = await fetchMatchStats(selectedApiMatchId);
         if (active && statsRes && statsRes.success) {
-          setFetchedStats(statsRes.response);
+          setFetchedStats((prev: any) => {
+            const same = JSON.stringify(prev) === JSON.stringify(statsRes.response);
+            return same ? prev : statsRes.response;
+          });
         }
       } catch (err) {
         console.warn("Error fetching real stats:", err);
       } finally {
         if (active) setIsFetchingStats(false);
+      }
+
+      try {
+        const lineupsRes = await fetchMatchLineups(selectedApiMatchId);
+        if (active && lineupsRes && lineupsRes.success) {
+          setFetchedLineups(lineupsRes);
+          // Only auto-apply if the admin hasn't already uploaded a composition image for that team
+          setCustomLineupsState(prev => {
+            const nextHome = lineupsRes.home?.players?.length ? lineupsRes.home : prev.home;
+            const nextAway = lineupsRes.away?.players?.length ? lineupsRes.away : prev.away;
+            const next = { home: nextHome, away: nextAway };
+            return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+          });
+        }
+      } catch (err) {
+        console.warn("Error fetching real lineups:", err);
+      } finally {
+        if (active) setIsFetchingLineups(false);
       }
     }
 
@@ -1281,7 +1337,9 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Auto Refresh stats & lineups along with match live polling
     const detailInterval = setInterval(() => {
-      if (!isTokenSavingMode) {
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+      if (!isTokenSavingMode && !isTyping) {
         loadStatsAndLineups();
       }
     }, 30000); // 30 seconds polling matching guideline
@@ -1301,7 +1359,9 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadApiMatches(selectedDate);
     // Auto refresh API match status list every 25 seconds for ultra-reactive live experience
     const interval = setInterval(() => {
-      if (isAutoRefreshListActive && !isTokenSavingMode) {
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+      if (isAutoRefreshListActive && !isTokenSavingMode && !isTyping) {
         loadApiMatches(selectedDate);
       }
     }, 25000);
@@ -2129,6 +2189,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ...matchState,
           stats: parsedStats
         },
+        setMatchState,
         upcomingMatches,
         ads,
         setAds,

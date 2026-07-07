@@ -26,7 +26,11 @@ export default function AdminDashboard() {
     customUpcomingMatches,
     setMatchState,
     setCustomLineups,
-    setCustomUpcomingMatches
+    setCustomUpcomingMatches,
+    selectedApiMatchId,
+    setSelectedApiMatchId,
+    isTokenSavingMode,
+    setIsTokenSavingMode
   } = useMatchContext();
 
   const [activeTab, setActiveTab] = useState<'match' | 'lineups' | 'upcoming'>('match');
@@ -192,7 +196,8 @@ export default function AdminDashboard() {
         team: team,
         player: scorerName.trim() || "Buteur",
         minute: minute,
-        detail: "But !"
+        second: match.seconds || 0,
+        description: "But !"
       });
       setScorerName(''); // Clear scorer name
     } else if (change < 0) {
@@ -230,7 +235,7 @@ export default function AdminDashboard() {
     
     const updatedFields: any = { isPlaying: nextPlaying };
     if (nextPlaying && (status === 'UPCOMING' || status === 'HT' || status === 'HALF_TIME' || status === 'FINISHED' || status === 'FT')) {
-      let nextStatus = status;
+      let nextStatus: 'IN_PLAY' | 'FINISHED' | 'HALF_TIME' | 'UPCOMING' | '1H' | '2H' | 'HT' | 'FT' = status;
       if (status === 'UPCOMING' || status === 'FINISHED' || status === 'FT') {
         nextStatus = '1H';
         setMinute(0);
@@ -700,7 +705,7 @@ export default function AdminDashboard() {
               {/* Status information pills */}
               <div className="mt-5 border-t border-white/10 pt-4 flex flex-wrap items-center gap-1.5">
                 <span className="font-mono text-[9px] text-slate-500 uppercase font-bold">Période:</span>
-                {['UPCOMING', '1H', 'HT', '2H', 'FINISHED'].map((st) => (
+                {(['UPCOMING', '1H', 'HT', '2H', 'FINISHED'] as const).map((st) => (
                   <button
                     key={st}
                     onClick={async () => {
@@ -872,6 +877,77 @@ export default function AdminDashboard() {
                   />
                 </div>
 
+                <div className="mt-4 p-4 bg-zinc-950/40 rounded-2xl border border-white/5">
+                  <label className="block text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider mb-1">
+                    ID Match API-Football (statistiques réelles uniquement)
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedApiMatchId || ''}
+                    onChange={(e) => setSelectedApiMatchId(e.target.value)}
+                    placeholder="ex: 1035037 (laisser vide pour stats manuelles)"
+                    className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-green"
+                  />
+                  <p className="text-[9px] font-mono text-slate-500 mt-1.5 leading-relaxed">
+                    Cherche l'ID du match sur api-football.com (fixture id). Le reste (score, noms, événements) reste géré manuellement — seules les stats (possession, tirs, corners, fautes, cartons) seront récupérées automatiquement.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/5">
+                    <div>
+                      <label className="block text-[9px] font-mono text-slate-400 font-bold uppercase tracking-wider mb-1">
+                        ID Équipe Domicile (optionnel)
+                      </label>
+                      <input
+                        type="text"
+                        value={match.homeTeam.apiTeamId || ''}
+                        onChange={(e) => {
+                          const val = e.target.value ? Number(e.target.value) : undefined;
+                          setMatchState(prev => ({ ...prev, homeTeam: { ...prev.homeTeam, apiTeamId: val } }));
+                        }}
+                        placeholder="ex: 33"
+                        className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-green"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-mono text-slate-400 font-bold uppercase tracking-wider mb-1">
+                        ID Équipe Visiteur (optionnel)
+                      </label>
+                      <input
+                        type="text"
+                        value={match.awayTeam.apiTeamId || ''}
+                        onChange={(e) => {
+                          const val = e.target.value ? Number(e.target.value) : undefined;
+                          setMatchState(prev => ({ ...prev, awayTeam: { ...prev.awayTeam, apiTeamId: val } }));
+                        }}
+                        placeholder="ex: 34"
+                        className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-green"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[9px] font-mono text-slate-500 mt-1.5 leading-relaxed">
+                    Renseigne ces 2 IDs (trouvables sur dashboard.api-football.com → Ids → Teams) uniquement si le rapprochement automatique par nom d'équipe échoue.
+                  </p>
+
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                    <div>
+                      <span className="block text-[10px] font-mono text-white font-bold uppercase tracking-wider">
+                        Rafraîchissement auto des stats
+                      </span>
+                      <span className="block text-[9px] font-mono text-slate-500 mt-0.5">
+                        {isTokenSavingMode
+                          ? "Désactivé — recharge la page manuellement pour mettre à jour les stats (économise tes appels API)"
+                          : "Activé — les stats se mettent à jour toutes les 30 secondes automatiquement"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsTokenSavingMode(!isTokenSavingMode)}
+                      className={`shrink-0 w-11 h-6 rounded-full relative transition cursor-pointer ${!isTokenSavingMode ? 'bg-brand-green' : 'bg-zinc-700'}`}
+                    >
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${!isTokenSavingMode ? 'left-5.5' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+                </div>
+
                 {/* Match events / Scorer Timeline list */}
                 <div className="mt-4 p-4 bg-zinc-950/40 rounded-2xl border border-white/5">
                   <h4 className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider border-b border-white/5 pb-1 mb-3">
@@ -934,99 +1010,76 @@ export default function AdminDashboard() {
                     Compositions Tactiques
                   </h3>
                   <span className="text-[9px] font-mono text-slate-500 mt-1 uppercase tracking-wider block">
-                    Configuration des titulaires, numéros et formations pour le terrain
+                    Récupérées automatiquement depuis l'API-Football
                   </span>
                 </div>
               </div>
 
-              {/* Toggle Team & Formation Selectors */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
-                  <button
-                    onClick={() => setSelectedTeam('home')}
-                    className={`font-mono font-black text-[10px] uppercase px-4 py-2 rounded-lg transition cursor-pointer ${
-                      selectedTeam === 'home' 
-                        ? 'bg-brand-red text-white' 
-                        : 'text-slate-400 hover:text-white bg-transparent'
-                    }`}
-                  >
-                    {homeName || "Domicile"}
-                  </button>
-                  <button
-                    onClick={() => setSelectedTeam('away')}
-                    className={`font-mono font-black text-[10px] uppercase px-4 py-2 rounded-lg transition cursor-pointer ${
-                      selectedTeam === 'away' 
-                        ? 'bg-brand-blue text-white' 
-                        : 'text-slate-400 hover:text-white bg-transparent'
-                    }`}
-                  >
-                    {awayName || "Visiteur"}
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-[9px] text-slate-400 font-bold uppercase">Formation :</span>
-                  <select
-                    value={lineupFormation}
-                    onChange={(e: any) => applyFormationPreset(e.target.value)}
-                    className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-                  >
-                    <option value="4-3-3">4-3-3</option>
-                    <option value="4-2-3-1">4-2-3-1</option>
-                    <option value="4-4-2">4-4-2</option>
-                    <option value="3-5-2">3-5-2</option>
-                    <option value="5-3-2">5-3-2</option>
-                  </select>
-                </div>
+              {/* Toggle Team (preview only) */}
+              <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+                <button
+                  onClick={() => setSelectedTeam('home')}
+                  className={`font-mono font-black text-[10px] uppercase px-4 py-2 rounded-lg transition cursor-pointer ${
+                    selectedTeam === 'home' 
+                      ? 'bg-brand-red text-white' 
+                      : 'text-slate-400 hover:text-white bg-transparent'
+                  }`}
+                >
+                  {homeName || "Domicile"}
+                </button>
+                <button
+                  onClick={() => setSelectedTeam('away')}
+                  className={`font-mono font-black text-[10px] uppercase px-4 py-2 rounded-lg transition cursor-pointer ${
+                    selectedTeam === 'away' 
+                      ? 'bg-brand-blue text-white' 
+                      : 'text-slate-400 hover:text-white bg-transparent'
+                  }`}
+                >
+                  {awayName || "Visiteur"}
+                </button>
               </div>
             </div>
 
-            {/* Composition Image Upload (Alternative to manual player entry) */}
-            <div className="bg-zinc-950/40 rounded-2xl border border-white/5 p-4 mb-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  Image de composition ({selectedTeam === 'home' ? homeName || 'Domicile' : awayName || 'Visiteur'})
-                </span>
-                {lineupImage && (
-                  <button
-                    onClick={() => setLineupImage('')}
-                    className="text-slate-500 hover:text-brand-red font-mono text-[9px] uppercase font-bold flex items-center gap-1 cursor-pointer transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Retirer
-                  </button>
-                )}
-              </div>
-
-              {lineupImage ? (
-                <img
-                  src={lineupImage}
-                  alt="Composition"
-                  className="w-full max-h-[420px] object-contain rounded-xl border border-white/10 bg-black/40"
-                />
-              ) : (
-                <p className="text-[10px] font-mono text-slate-500 mb-2">
-                  Téléverse une image (capture d'écran de composition, graphique, etc.). Si une image est présente, elle remplace l'affichage automatique des joueurs sur le terrain dans l'overlay.
+            {!selectedApiMatchId ? (
+              <div className="bg-zinc-950/40 rounded-2xl border border-amber-500/20 p-5 text-center">
+                <p className="text-[11px] font-mono text-amber-400 font-bold uppercase mb-1">
+                  Aucun ID de match API renseigné
                 </p>
-              )}
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLineupImageUpload}
-                className="mt-3 w-full text-[10px] text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[9px] file:font-bold file:bg-zinc-800 file:text-white file:hover:bg-zinc-700 cursor-pointer"
-              />
-            </div>
-
-
-            <div className="mt-6 border-t border-white/10 pt-4 flex justify-end">
-              <button
-                onClick={saveLineups}
-                className="bg-zinc-100 hover:bg-white text-black font-display font-black tracking-widest text-xs uppercase py-3.5 px-6 rounded-xl flex items-center gap-2 transition cursor-pointer active:scale-97 shadow-lg"
-              >
-                <Save className="w-4 h-4" />
-                Enregistrer la composition ({selectedTeam === 'home' ? 'Domicile' : 'Visiteur'})
-              </button>
-            </div>
+                <p className="text-[10px] font-mono text-slate-500">
+                  Va dans l'onglet "Infos Match" et renseigne l'ID du match API-Football pour que les compositions se récupèrent automatiquement.
+                </p>
+              </div>
+            ) : playersList.length === 0 ? (
+              <div className="bg-zinc-950/40 rounded-2xl border border-white/5 p-5 text-center">
+                <p className="text-[11px] font-mono text-slate-400 font-bold uppercase mb-1">
+                  Composition pas encore disponible
+                </p>
+                <p className="text-[10px] font-mono text-slate-500">
+                  Les compositions officielles sont généralement publiées par l'API environ 30-60 min avant le coup d'envoi. Réessaie un peu plus tard.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-zinc-950/40 rounded-2xl border border-white/5 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    Formation : {lineupFormation}
+                  </span>
+                  <span className="font-mono text-[9px] text-brand-green font-bold uppercase">
+                    ● Synchronisé via API
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {playersList.map((p: any) => (
+                    <div key={p.id} className="bg-zinc-900/60 rounded-xl px-3 py-2 border border-white/5 flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-black text-white bg-black/40 rounded w-5 h-5 flex items-center justify-center shrink-0">
+                        {p.number}
+                      </span>
+                      <span className="font-mono text-[10px] text-slate-300 truncate">{p.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
