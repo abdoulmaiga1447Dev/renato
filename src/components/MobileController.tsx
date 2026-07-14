@@ -43,8 +43,6 @@ export default function MobileController() {
   );
 
   // Scorer state for goal trigger
-  const [scorerName, setScorerName] = useState('');
-  const [scorerNumber, setScorerNumber] = useState('');
 
   // Local editing states for upcoming matches
   const [newMatchHome, setNewMatchHome] = useState('');
@@ -206,10 +204,7 @@ export default function MobileController() {
 
   // Quick Action Buttons
   const handleTriggerGoal = (team: 'home' | 'away') => {
-    const nameStr = scorerName.trim() ? `${scorerName.toUpperCase()}${scorerNumber ? ` (${scorerNumber})` : ''}` : undefined;
-    triggerGoal(team, nameStr);
-    setScorerName('');
-    setScorerNumber('');
+    triggerGoal(team);
   };
 
   return (
@@ -450,62 +445,13 @@ export default function MobileController() {
 
               </div>
 
-              {/* GOAL SCORER OPTION */}
-              <div className="bg-[#0B1220] border border-white/5 rounded-2xl p-3.5 space-y-2.5 shadow">
-                <div className="flex items-center gap-1.5 text-brand-blue border-b border-white/5 pb-1.5">
-                  <Award className="w-4 h-4" />
-                  <span className="font-display font-black text-[10px] tracking-wider text-white uppercase">
-                    NOM DU BUTEUR (OPTIONNEL)
-                  </span>
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={scorerName}
-                    onChange={(e) => setScorerName(e.target.value)}
-                    placeholder="Ex: Mbappé, Ronaldo"
-                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue"
-                  />
-                  <input
-                    type="number"
-                    value={scorerNumber}
-                    onChange={(e) => setScorerNumber(e.target.value)}
-                    placeholder="N°"
-                    className="w-14 bg-black/40 border border-white/10 rounded-xl px-2 py-2 text-xs font-mono text-white text-center placeholder-slate-500 focus:outline-none focus:border-brand-blue"
-                  />
-                </div>
-                <p className="text-[8px] font-mono text-slate-500 uppercase leading-normal">
-                  Saisissez le nom avant de cliquer sur un bouton "Triger But" pour l'afficher sur l'overlay TV OBS.
-                </p>
-              </div>
+{/* [SUPPRIMÉ] Champ « Nom du buteur » retiré à la demande du client */}
 
               {/* QUICK STATS & EVENT INJECTOR */}
               <div className="bg-[#0B1220] border border-white/5 rounded-2xl p-3.5 space-y-2.5 shadow">
                 <span className="font-display font-black text-[10px] tracking-wider text-white uppercase block border-b border-white/5 pb-1.5">
-                  AJOUTER UN ÉVÉNEMENT RAPIDE
+                  ÉVÉNEMENTS RAPIDES
                 </span>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => triggerEvent('yellow_card', 'home', 'Joueur', 'Avertissement')}
-                    className="bg-amber-550/15 border border-amber-500/30 text-amber-500 py-2 rounded-lg text-[9px] font-mono font-black uppercase cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    🟨 Card Dom
-                  </button>
-                  <button
-                    onClick={() => triggerEvent('yellow_card', 'away', 'Joueur', 'Avertissement')}
-                    className="bg-amber-550/15 border border-amber-500/30 text-amber-500 py-2 rounded-lg text-[9px] font-mono font-black uppercase cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    🟨 Card Ext
-                  </button>
-                  <button
-                    onClick={() => triggerEvent('red_card', 'home', 'Joueur', 'Expulsion')}
-                    className="bg-red-500/15 border border-red-500/30 text-red-500 py-2 rounded-lg text-[9px] font-mono font-black uppercase cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    🟥 Card Dom
-                  </button>
-                </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   <button

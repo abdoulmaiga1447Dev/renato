@@ -8,27 +8,6 @@ import { io as socketIOClient } from 'socket.io-client';
 import { MatchState, MatchEvent, TeamInfo, MatchStats, UpcomingMatch, Ad, Lineup, Player, EventType } from '../types';
 import { fetchMatchStats, fetchMatchLineups, fetchLiveMatches, fetchMatchDetails } from '../services';
 
-// initial mock teams
-const portugalTeam: TeamInfo = {
-  name: "Portugal",
-  code: "POR",
-  shortName: "Portugal",
-  logoUrl: "🇵🇹",
-  color: "#DC2626", // Red primary
-  textColor: "#FCD34D", // Gold text
-  xg: 0.5
-};
-
-const rdCongoTeam: TeamInfo = {
-  name: "RD Congo",
-  code: "COD",
-  shortName: "RD Congo",
-  logoUrl: "🇨🇩",
-  color: "#2563EB", // Blue primary
-  textColor: "#FCD34D", // Gold stars/text
-  xg: 0.1
-};
-
 const emptyHomeTeam: TeamInfo = {
   name: "En attente",
   code: "DOM",
@@ -85,40 +64,11 @@ const initialAds: Ad[] = [
   }
 ];
 
-// Portgual & RD Congo lineups
+// [NO-HISTORY] Aucune composition par défaut : le terrain reste vide tant
+// qu'aucune donnée réelle (API) ou manuelle (régie) n'est fournie.
 const lineupsData: Record<string, Lineup> = {
-  home: {
-    formation: "4-3-3",
-    players: [
-      { id: "p1", name: "D. COSTA", number: 1, position: "GK", x: 50, y: 90 },
-      { id: "p2", name: "R. VEIGA", number: 4, position: "DEF", x: 35, y: 72 },
-      { id: "p3", name: "T. ARAÚJO", number: 3, position: "DEF", x: 65, y: 72 },
-      { id: "p4", name: "N. MENDES", number: 19, position: "DEF", x: 15, y: 65 },
-      { id: "p5", name: "J. CANCELO", number: 20, position: "DEF", x: 85, y: 65 },
-      { id: "p6", name: "VITINHA", number: 23, position: "MID", x: 32, y: 46 },
-      { id: "p7", name: "J. NEVES", number: 6, position: "MID", x: 68, y: 46 },
-      { id: "p8", name: "B. FERNANDES", number: 8, position: "MID", x: 50, y: 32 },
-      { id: "p9", name: "P. NETO", number: 18, position: "ATT", x: 20, y: 18 },
-      { id: "p10", name: "B. SILVA", number: 10, position: "ATT", x: 80, y: 18 },
-      { id: "p11", name: "RONALDO", number: 7, position: "ATT", x: 50, y: 10 }
-    ]
-  },
-  away: {
-    formation: "4-2-3-1",
-    players: [
-      { id: "c1", name: "D. BERTAUD", number: 1, position: "GK", x: 50, y: 90 },
-      { id: "c2", name: "C. MBEMBA", number: 22, position: "DEF", x: 35, y: 74 },
-      { id: "c3", name: "H. INONGA", number: 2, position: "DEF", x: 65, y: 74 },
-      { id: "c4", name: "A. MASUAKU", number: 26, position: "DEF", x: 15, y: 66 },
-      { id: "c5", name: "G. KALULU", number: 24, position: "DEF", x: 85, y: 66 },
-      { id: "c6", name: "S. MOUTOUSSAMY", number: 8, position: "MID", x: 35, y: 48 },
-      { id: "c7", name: "C. PICKEL", number: 18, position: "MID", x: 65, y: 48 },
-      { id: "c8", name: "M. ELIA", number: 13, position: "MID", x: 20, y: 30 },
-      { id: "c9", name: "G. KAKUTA", number: 14, position: "MID", x: 50, y: 30 },
-      { id: "c10", name: "Y. WISSA", number: 20, position: "MID", x: 80, y: 30 },
-      { id: "c11", name: "S. BANZA", number: 19, position: "ATT", x: 50, y: 12 }
-    ]
-  }
+  home: { formation: "", players: [] },
+  away: { formation: "", players: [] }
 };
 
 export function generateLineupForTeam(teamName: string, color: string, isHome: boolean): Lineup {
@@ -450,17 +400,8 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   // Define base state matching static starting layout (waiting for direct API signal)
-  const [matchState, setMatchState] = useState<MatchState>(() => {
-    try {
-      const saved = localStorage.getItem('matchState');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Failed to load matchState from localStorage", e);
-    }
-    return getInitialMatchState();
-  });
+  // [NO-HISTORY] L'état du match n'est jamais restauré depuis le navigateur.
+  const [matchState, setMatchState] = useState<MatchState>(() => getInitialMatchState());
 
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
 
@@ -488,15 +429,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [ads]);
 
-  const [selectedLineupTeam, setSelectedLineupTeam] = useState<'home' | 'away'>(() => {
-    try {
-      const saved = localStorage.getItem('selectedLineupTeam');
-      if (saved === 'home' || saved === 'away') {
-        return saved;
-      }
-    } catch {}
-    return 'home';
-  });
+  const [selectedLineupTeam, setSelectedLineupTeam] = useState<'home' | 'away'>('home');
 
   const [streamSource, setStreamSource] = useState<'camera' | 'greenscreen' | 'phone'>(() => {
     try {
@@ -520,24 +453,10 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
-  const [isPlayingSim, setIsPlayingSim] = useState(() => {
-    try {
-      const saved = localStorage.getItem('isPlayingSim');
-      return saved === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isPlayingSim, setIsPlayingSim] = useState(false);
 
   // Real External API integrations
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('selectedDate');
-      return saved || new Date().toISOString().split('T')[0];
-    } catch {
-      return new Date().toISOString().split('T')[0];
-    }
-  });
+  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
   const [isAutoSyncActive, setIsAutoSyncActive] = useState<boolean>(true);
   const [isAutoRefreshListActive, setIsAutoRefreshListActive] = useState<boolean>(true);
@@ -641,14 +560,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [showOverlayInstructions]);
 
   // Load initially pinned matches state
-  const [pinnedMatchIds, setPinnedMatchIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('pinnedMatchIds');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [pinnedMatchIds, setPinnedMatchIds] = useState<string[]>([]);
 
   const [pinnedLimit, setPinnedLimit] = useState<number>(() => {
     try {
@@ -670,11 +582,11 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Persists states when they transform locally
   useEffect(() => {
-    localStorage.setItem('matchState', JSON.stringify(matchState));
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [matchState]);
 
   useEffect(() => {
-    localStorage.setItem('selectedLineupTeam', selectedLineupTeam);
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [selectedLineupTeam]);
 
   useEffect(() => {
@@ -682,15 +594,15 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [streamSource]);
 
   useEffect(() => {
-    localStorage.setItem('isPlayingSim', String(isPlayingSim));
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [isPlayingSim]);
 
   useEffect(() => {
-    localStorage.setItem('selectedDate', selectedDate);
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [selectedDate]);
 
   useEffect(() => {
-    localStorage.setItem('pinnedMatchIds', JSON.stringify(pinnedMatchIds));
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [pinnedMatchIds]);
 
   useEffect(() => {
@@ -703,57 +615,17 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Real-time remote and manual control states
   const localTimestampRef = useRef<number>(Date.now());
+  // [FIX résidu] Ref toujours à jour du match API sélectionné, pour que les
+  // handlers socket (closure figée) sachent s'il faut ignorer les données manuelles.
+  const selectedApiMatchIdRef = useRef<string>("");
   const lastLocalActionTime = useRef<number>(0);
   const lastAppliedServerTimestamp = useRef<number>(0);
 
-  const [customLineups, setCustomLineupsState] = useState<Record<'home' | 'away', Lineup>>(() => {
-    try {
-      const saved = localStorage.getItem('customLineups');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Permanently purge any legacy uploaded composition images — API data is now the only source.
-        if (parsed?.home?.imageUrl) delete parsed.home.imageUrl;
-        if (parsed?.away?.imageUrl) delete parsed.away.imageUrl;
-        return parsed;
-      }
-    } catch (e) {}
-    return portlandCopy(lineupsData);
-  });
+  // [NO-HISTORY] Les compos démarrent toujours vides, jamais restaurées du navigateur.
+  const [customLineups, setCustomLineupsState] = useState<Record<'home' | 'away', Lineup>>(() => portlandCopy(lineupsData));
 
-  const [customUpcomingMatches, setCustomUpcomingMatchesState] = useState<UpcomingMatch[]>(() => {
-    try {
-      const saved = localStorage.getItem('customUpcomingMatches');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [
-      {
-        id: "up-1",
-        date: "20:00",
-        time: "Direct",
-        homeTeam: "Portugal",
-        awayTeam: "RD Congo",
-        homeTeamFlag: "🇵🇹",
-        awayTeamFlag: "🇨🇩",
-        competition: "Match Amical",
-        status: "UPCOMING",
-        homeScore: 0,
-        awayScore: 0
-      },
-      {
-        id: "up-2",
-        date: "Demain",
-        time: "Direct",
-        homeTeam: "France",
-        awayTeam: "Espagne",
-        homeTeamFlag: "🇫🇷",
-        awayTeamFlag: "🇪🇸",
-        competition: "Euro 2026",
-        status: "UPCOMING",
-        homeScore: 0,
-        awayScore: 0
-      }
-    ];
-  });
+  // [NO-HISTORY] Aucun match à venir par défaut, aucune restauration navigateur.
+  const [customUpcomingMatches, setCustomUpcomingMatchesState] = useState<UpcomingMatch[]>([]);
 
   const setCustomLineups = (nextLineups: Record<'home' | 'away', Lineup>) => {
     lastLocalActionTime.current = Date.now();
@@ -768,11 +640,11 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   useEffect(() => {
-    localStorage.setItem('customLineups', JSON.stringify(customLineups));
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [customLineups]);
 
   useEffect(() => {
-    localStorage.setItem('customUpcomingMatches', JSON.stringify(customUpcomingMatches));
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [customUpcomingMatches]);
 
   const [apiMatches, setApiMatches] = useState<any[]>([]);
@@ -800,17 +672,15 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLoadingApi, setIsLoadingApi] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiDiagnostic, setApiDiagnostic] = useState<any | null>(null);
-  const [selectedApiMatchId, setSelectedApiMatchId] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('selectedApiMatchId');
-      return saved || "";
-    } catch {
-      return "";
-    }
-  });
+  // [NO-HISTORY] Le match sélectionné n'est jamais restauré : la synchro serveur fait foi.
+  const [selectedApiMatchId, setSelectedApiMatchId] = useState<string>("");
 
   useEffect(() => {
-    localStorage.setItem('selectedApiMatchId', selectedApiMatchId);
+    selectedApiMatchIdRef.current = selectedApiMatchId;
+  }, [selectedApiMatchId]);
+
+  useEffect(() => {
+    // [NO-HISTORY] persistance navigateur désactivée
   }, [selectedApiMatchId]);
 
   // Real-time Storage Sync to coordinate between controller/Régie and OBS overlay windows
@@ -1008,7 +878,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (data.isPlayingSim !== undefined) setIsPlayingSim(data.isPlayingSim);
       if (data.phoneCamStreamId !== undefined) setPhoneCamStreamId(data.phoneCamStreamId);
       if (data.pinnedMatchIds !== undefined) setPinnedMatchIds(data.pinnedMatchIds);
-      if (data.customLineups && !(data.selectedApiMatchId || selectedApiMatchId)) setCustomLineupsState(data.customLineups);
+      if (data.customLineups && !(data.selectedApiMatchId || selectedApiMatchIdRef.current)) setCustomLineupsState(data.customLineups);
       if (data.customUpcomingMatches) setCustomUpcomingMatchesState(data.customUpcomingMatches);
       if (data.matchState) {
         setMatchState(prev => ({ ...prev, ...data.matchState }));
@@ -1022,6 +892,9 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     socket.on('lineups:update', (lineups: any) => {
       if (!lineups) return;
+      // [FIX résidu] Un match API est sélectionné : la compo vient de l'API,
+      // on refuse toute compo manuelle poussée par le serveur (fin du va-et-vient).
+      if (selectedApiMatchIdRef.current) return;
       setCustomLineupsState(lineups);
     });
 
@@ -1032,6 +905,9 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     socket.on('match-info:update', (matchInfo: any) => {
       if (!matchInfo) return;
+      // [FIX résidu] Idem : en mode API, les infos manuelles de la régie ne
+      // doivent pas écraser le match réel affiché.
+      if (selectedApiMatchIdRef.current) return;
       setMatchState(prev => ({
         ...prev,
         ...matchInfo
@@ -1093,7 +969,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (data.pinnedMatchIds !== undefined) {
           setPinnedMatchIds(prev => JSON.stringify(prev) === JSON.stringify(data.pinnedMatchIds) ? prev : data.pinnedMatchIds);
         }
-        if (data.customLineups && !(data.selectedApiMatchId || selectedApiMatchId)) {
+        if (data.customLineups && !(data.selectedApiMatchId || selectedApiMatchIdRef.current)) {
           setCustomLineupsState(prev => JSON.stringify(prev) === JSON.stringify(data.customLineups) ? prev : data.customLineups);
         }
         if (data.customUpcomingMatches) {
@@ -1529,8 +1405,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               if (cadrSeed > 0.5) {
                 updatedStats.tirsCadres[0] += 1;
                 // Add event live feed
-                const names = ["Ronaldo", "B. Silva", "B. Fernandes", "P. Neto"];
-                const shooter = names[Math.floor(Math.random() * names.length)];
+                const shooter = "Attaquant";
                 
                 const newEv: MatchEvent = {
                   id: "ev-" + Date.now(),
@@ -1539,7 +1414,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   second: nSecs,
                   team: "home",
                   player: shooter,
-                  description: `Grosse occasion pour le Portugal ! Frappe de ${shooter} stoppée par le gardien.`
+                  description: `Grosse occasion pour ${prev.homeTeam.name} ! Frappe stoppée par le gardien.`
                 };
                 updatedEvents.unshift(newEv);
                 if (updatedEvents.length > 50) updatedEvents.length = 50;
@@ -1556,8 +1431,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               const cadrSeed = Math.random();
               if (cadrSeed > 0.6) {
                 updatedStats.tirsCadres[1] += 1;
-                const names = ["S. Banza", "Y. Wissa", "G. Kakuta"];
-                const shooter = names[Math.floor(Math.random() * names.length)];
+                const shooter = "Attaquant";
                 
                 const newEv: MatchEvent = {
                   id: "ev-" + Date.now(),
@@ -1566,7 +1440,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   second: nSecs,
                   team: "away",
                   player: shooter,
-                  description: `Contre-attaque éclair de la RD Congo. Tir cadré de ${shooter} bien capté par Costa.`
+                  description: `Contre-attaque éclair de ${prev.awayTeam.name}. Tir cadré bien capté par le gardien.`
                 };
                 updatedEvents.unshift(newEv);
                 if (updatedEvents.length > 50) updatedEvents.length = 50;
@@ -1588,8 +1462,8 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 minute: nMin,
                 second: nSecs,
                 team: eventTeam,
-                player: eventTeam === 'home' ? "B. Fernandes" : "M. Elia",
-                description: `Corner obtenu pour ${eventTeam === 'home' ? 'le Portugal' : 'la RD Congo'}.`
+                player: "",
+                description: `Corner obtenu pour ${eventTeam === 'home' ? prev.homeTeam.name : prev.awayTeam.name}.`
               };
               updatedEvents.unshift(newEv);
               if (updatedEvents.length > 50) updatedEvents.length = 50;
@@ -1604,7 +1478,7 @@ export const MatchProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 second: nSecs,
                 team: eventTeam === 'home' ? 'away' : 'home', // fouled on
                 player: "Arbitre",
-                description: `Faute signalée contre ${eventTeam === 'home' ? 'le Portugal' : 'la RD Congo'}.`
+                description: `Faute signalée contre ${eventTeam === 'home' ? prev.homeTeam.name : prev.awayTeam.name}.`
               };
               updatedEvents.unshift(newEv);
               if (updatedEvents.length > 50) updatedEvents.length = 50;

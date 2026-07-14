@@ -358,74 +358,21 @@ function saveAssetsData() {
 loadAssetsData();
 
 // Admin custom manual data stores (persistent on disk)
+// [NO-HISTORY] Indique si l'admin a saisi des données durant CETTE session.
+// Tant que c'est false, rien n'est poussé aux clients à la connexion (pas de résidu).
+const adminTouched = { lineups: false, upcoming: false, matchInfo: false };
+
 let adminLineups = {
-  home: {
-    formation: "4-3-3",
-    players: [
-      { id: "h-1", name: "Diogo Costa", number: 99, role: "G", x: 50, y: 90 },
-      { id: "h-2", name: "João Cancelo", number: 2, role: "D", x: 85, y: 70 },
-      { id: "h-3", name: "Rúben Dias", number: 4, role: "D", x: 60, y: 75 },
-      { id: "h-4", name: "Pepe", number: 3, role: "D", x: 40, y: 75 },
-      { id: "h-5", name: "Nuno Mendes", number: 19, role: "D", x: 15, y: 70 },
-      { id: "h-6", name: "João Palhinha", number: 6, role: "M", x: 50, y: 55 },
-      { id: "h-7", name: "Vitinha", number: 23, role: "M", x: 30, y: 45 },
-      { id: "h-8", name: "Bruno Fernandes", number: 8, role: "M", x: 70, y: 45 },
-      { id: "h-9", name: "Bernardo Silva", number: 10, role: "A", x: 80, y: 20 },
-      { id: "h-10", name: "Cristiano Ronaldo", number: 7, role: "A", x: 50, y: 15 },
-      { id: "h-11", name: "Rafael Leão", number: 17, role: "A", x: 20, y: 20 }
-    ]
-  },
-  away: {
-    formation: "4-3-3",
-    players: [
-      { id: "a-1", name: "B. Noubissi", number: 1, role: "G", x: 50, y: 90 },
-      { id: "a-2", name: "G. Kalulu", number: 2, role: "D", x: 85, y: 70 },
-      { id: "a-3", name: "Chancel Mbemba", number: 22, role: "D", x: 60, y: 75 },
-      { id: "a-4", name: "Henoc Inonga", number: 5, role: "D", x: 40, y: 75 },
-      { id: "a-5", name: "Arthur Masuaku", number: 26, role: "D", x: 15, y: 70 },
-      { id: "a-6", name: "Samuel Moutoussamy", number: 8, role: "M", x: 50, y: 55 },
-      { id: "a-7", name: "Charles Pickel", number: 18, role: "M", x: 30, y: 45 },
-      { id: "a-8", name: "Gaël Kakuta", number: 14, role: "M", x: 70, y: 45 },
-      { id: "a-9", name: "Meschack Elia", number: 13, role: "A", x: 80, y: 20 },
-      { id: "a-10", name: "Cédric Bakambu", number: 9, role: "A", x: 50, y: 15 },
-      { id: "a-11", name: "Yoane Wissa", number: 20, role: "A", x: 20, y: 20 }
-    ]
-  }
+  home: { formation: "", players: [] as any[] },
+  away: { formation: "", players: [] as any[] }
 };
 
-let adminUpcomingMatches = [
-  {
-    id: "up-1",
-    date: "20:00",
-    time: "Direct",
-    homeTeam: "Portugal",
-    awayTeam: "RD Congo",
-    homeTeamFlag: "🇵🇹",
-    awayTeamFlag: "🇨🇩",
-    competition: "Match Amical",
-    status: "UPCOMING",
-    homeScore: 0,
-    awayScore: 0
-  },
-  {
-    id: "up-2",
-    date: "Demain",
-    time: "Direct",
-    homeTeam: "France",
-    awayTeam: "Espagne",
-    homeTeamFlag: "🇫🇷",
-    awayTeamFlag: "🇪🇸",
-    competition: "Euro 2026",
-    status: "UPCOMING",
-    homeScore: 0,
-    awayScore: 0
-  }
-];
+let adminUpcomingMatches: any[] = [];
 
 let adminMatchInfo: any = {
-  homeTeam: { name: "Portugal", code: "POR", color: "#EF4444", logoUrl: "🇵🇹" },
-  awayTeam: { name: "RD Congo", code: "RDC", color: "#2563EB", logoUrl: "🇨🇩" },
-  competition: "Match Amical",
+  homeTeam: { name: "Domicile", code: "DOM", color: "#EF4444", logoUrl: "⚽" },
+  awayTeam: { name: "Extérieur", code: "EXT", color: "#2563EB", logoUrl: "⚽" },
+  competition: "",
   minute: 0,
   seconds: 0,
   homeScore: 0,
@@ -441,64 +388,20 @@ let adminMatchInfo: any = {
 
 const ADMIN_DATA_FILE = path.join(process.cwd(), 'admin_data.json');
 
-function loadAdminData() {
-  if (fs.existsSync(ADMIN_DATA_FILE)) {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(ADMIN_DATA_FILE, 'utf8'));
-      if (parsed.lineups) {
-        // Permanently purge any legacy uploaded composition images — API data is now the only source.
-        if (parsed.lineups.home && parsed.lineups.home.imageUrl) delete parsed.lineups.home.imageUrl;
-        if (parsed.lineups.away && parsed.lineups.away.imageUrl) delete parsed.lineups.away.imageUrl;
-        adminLineups = parsed.lineups;
-      }
-      if (parsed.upcomingMatches) adminUpcomingMatches = parsed.upcomingMatches;
-      if (parsed.matchInfo) adminMatchInfo = parsed.matchInfo;
-      console.log("[Admin Server] Loaded persisted admin data successfully.");
-    } catch (e) {
-      console.error("[Admin Server] Error loading persisted admin data:", e);
-    }
-  }
-}
+// [NO-HISTORY] La persistance disque des données de match est désactivée :
+// le serveur démarre toujours avec un état vierge pour éviter tout résidu
+// (ex: ancienne compo Portugal vs RD Congo) qui contaminerait les nouvelles données.
+function loadAdminData() { /* désactivé volontairement */ }
 
-function saveAdminData() {
-  try {
-    fs.writeFileSync(ADMIN_DATA_FILE, JSON.stringify({
-      lineups: adminLineups,
-      upcomingMatches: adminUpcomingMatches,
-      matchInfo: adminMatchInfo
-    }, null, 2), 'utf8');
-  } catch (e) {
-    console.error("[Admin Server] Error saving admin data:", e);
-  }
-}
+function saveAdminData() { /* désactivé volontairement */ }
+
+// Suppression de tout ancien fichier d'historique au démarrage
+try { if (fs.existsSync(ADMIN_DATA_FILE)) fs.unlinkSync(ADMIN_DATA_FILE); } catch (e) {}
 
 loadAdminData();
 
-// Sync initially on load
-if (!sharedControllerState.matchState) {
-  sharedControllerState.matchState = {
-    ...adminMatchInfo,
-    status: 'UPCOMING',
-    shortStatus: '1H',
-    hasRealStats: false,
-    hasRealLineups: false,
-    stats: {
-      possession: 50,
-      tirsTotal: [0, 0],
-      tirsCadres: [0, 0],
-      fautes: [0, 0],
-      corners: [0, 0],
-      cartonsJaunes: [0, 0],
-      cartonsRouges: [0, 0],
-      attaques: [0, 0],
-      attaquesDangereuses: [0, 0]
-    },
-    isGoalNotificationActive: false,
-    ballPosition: { x: 50, y: 50 },
-    xgHome: 0,
-    xgAway: 0
-  };
-}
+// [NO-HISTORY] Aucun état de match n'est semé au démarrage : le client garde
+// son écran d'attente tant qu'aucun match réel ou manuel n'est choisi.
 
 async function startServer() {
   const app = express();
@@ -517,11 +420,11 @@ async function startServer() {
   io.on('connection', (socket) => {
     console.log(`[Socket.io] Client connected: ${socket.id}`);
     
-    // Emit initial states
+    // Emit initial states — uniquement les données réellement saisies durant cette session
     socket.emit('state:update', sharedControllerState);
-    socket.emit('lineups:update', adminLineups);
-    socket.emit('upcoming:update', adminUpcomingMatches);
-    socket.emit('match-info:update', adminMatchInfo);
+    if (adminTouched.lineups) socket.emit('lineups:update', adminLineups);
+    if (adminTouched.upcoming) socket.emit('upcoming:update', adminUpcomingMatches);
+    if (adminTouched.matchInfo) socket.emit('match-info:update', adminMatchInfo);
 
     socket.on('disconnect', () => {
       console.log(`[Socket.io] Client disconnected: ${socket.id}`);
@@ -559,16 +462,13 @@ async function startServer() {
       };
       sharedControllerState.timestamp = Date.now();
 
+      adminTouched.matchInfo = true;
+
       // Emit updates to clients
       if (io) {
         io.emit('match-info:update', adminMatchInfo);
         io.emit('score:update', sharedControllerState.matchState);
         io.emit('state:update', sharedControllerState);
-      }
-
-      // Save data occasionally to reduce disk write overhead
-      if (nextSec % 10 === 0) {
-        saveAdminData();
       }
     }
   }, 1000);
@@ -640,8 +540,7 @@ async function startServer() {
       const { home, away } = req.body;
       if (home) adminLineups.home = home;
       if (away) adminLineups.away = away;
-      
-      saveAdminData();
+      adminTouched.lineups = true;
 
       const io = app.get('socketio');
       if (io) {
@@ -684,7 +583,7 @@ async function startServer() {
         }
       }
 
-      saveAdminData();
+      adminTouched.upcoming = true;
 
       const io = app.get('socketio');
       if (io) {
@@ -707,8 +606,7 @@ async function startServer() {
         ...adminMatchInfo,
         ...req.body
       };
-
-      saveAdminData();
+      adminTouched.matchInfo = true;
 
       // Synchronize back to sharedControllerState.matchState
       if (!sharedControllerState.matchState) {

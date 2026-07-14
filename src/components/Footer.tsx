@@ -53,7 +53,6 @@ export default function Footer() {
   const [extraTime1H, setExtraTime1H] = useState(match.extraTime1H || '');
   const [extraTime2H, setExtraTime2H] = useState(match.extraTime2H || '');
 
-  const [scorerName, setScorerName] = useState('');
   const [isMainInfoDirty, setIsMainInfoDirty] = useState(false);
 
   // --- Upcoming Matches Add States ---
@@ -185,11 +184,10 @@ export default function Footer() {
         id: eventId,
         type: 'goal' as any,
         team: team,
-        player: scorerName.trim() || "Buteur",
+        player: "But",
         minute: minute,
         detail: "But !"
       });
-      setScorerName('');
     } else if (change < 0) {
       const goalIndex = [...nextEvents].reverse().findIndex(e => e.type === 'goal' && e.team === team);
       if (goalIndex > -1) {

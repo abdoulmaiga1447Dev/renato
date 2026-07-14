@@ -53,7 +53,6 @@ export default function AdminDashboard() {
   const [isPlaying, setIsPlaying] = useState(match.isPlaying || false);
   const [status, setStatus] = useState(match.status || 'UPCOMING');
 
-  const [scorerName, setScorerName] = useState('');
 
   // Sync inputs with state when state updates from Socket.io/Polling
   useEffect(() => {
@@ -194,12 +193,11 @@ export default function AdminDashboard() {
         id: eventId,
         type: 'goal' as any,
         team: team,
-        player: scorerName.trim() || "Buteur",
+        player: "But",
         minute: minute,
         second: match.seconds || 0,
         description: "But !"
       });
-      setScorerName(''); // Clear scorer name
     } else if (change < 0) {
       // Remove last goal event for this team
       const goalIndex = [...nextEvents].reverse().findIndex(e => e.type === 'goal' && e.team === team);
@@ -618,32 +616,12 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Scorer Optional input */}
-                <div className="mt-5 p-4 bg-zinc-950/40 rounded-2xl border border-white/5">
-                  <label className="block text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider mb-1.5">
-                    Nom du Buteur (Optionnel pour ajouter l'événement de but)
-                  </label>
-                  <input
-                    type="text"
-                    value={scorerName}
-                    onChange={(e) => setScorerName(e.target.value)}
-                    placeholder="ex: Cristiano Ronaldo"
-                    className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/50"
-                  />
-                  <p className="text-[9px] text-slate-500 mt-1 font-mono">
-                    * Saisissez le buteur AVANT d'appuyer sur "+1" pour l'ajouter automatiquement à la chronologie du match !
-                  </p>
-                </div>
+{/* [SUPPRIMÉ] Champ « Nom du buteur » retiré à la demande du client */}
 
                 {/* Time controller section */}
                 <div className="mt-5 p-4 bg-zinc-950/40 rounded-2xl border border-white/5">
                   <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-3">
-                    <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
-                      Gestion du Chronomètre
-                    </span>
-                    <span className="font-mono text-xs font-black text-emerald-500">
-                      {String(minute).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-                    </span>
+                    <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">Contrôle du Chronomètre</span>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1289,7 +1267,7 @@ export default function AdminDashboard() {
           Réalisation Directe - Système de Real-Time Sync Socket.io ACTIF
         </span>
         <span className="text-[9px] font-mono uppercase tracking-[0.1em]">
-          Abidjan, Côte d'Ivoire & Kinshasa, RDC ● Portugal Match Regisseur
+          Régie Match en Direct
         </span>
       </footer>
     </div>
